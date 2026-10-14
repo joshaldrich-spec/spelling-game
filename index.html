@@ -133,18 +133,6 @@ label{font-weight:600}
     <label class="tg"><input type="checkbox" id="tmusic"> Background music</label>
     <label class="tg"><input type="checkbox" id="tsfx"> Sound effects</label>
     <label class="tg"><input type="checkbox" id="tlet"> Say letters as I type</label>
-    <details>
-      <summary>Change the word list</summary>
-      <textarea id="edit" rows="8" aria-label="Words, one per line" autocapitalize="none" spellcheck="false"></textarea>
-      <button class="btn w nine" id="save">Save list</button>
-    </details>
-    <details>
-      <summary>Voice settings</summary>
-      <label for="voice">Voice</label><select id="voice"></select>
-      <label for="rate">Speed</label>
-      <select id="rate"><option value="0.9">Normal</option><option value="0.7">Slow</option><option value="0.55">Very slow</option></select>
-      <button class="btn w nine" id="test">Test voice</button>
-    </details>
   </div>
 </section>
 
@@ -258,14 +246,13 @@ let words=DEFAULT.slice(),queue=[],i=0,wrong=0,tipOn=false,locked=false,right=0,
 const LISTS={'Week 1':DEFAULT,'Week 2':['snacking','mixing','smelling','running','kissing','buzzing','hitting','until','problem','how'],'Week 3':['sand','sang','sank','hunt','hung','hunk','thin','thing','think','should']};
 const LATEST='Week 3';let curList=LATEST,userLists={};
 try{curList=localStorage.getItem('spelllist')||LATEST;if(!LISTS[curList])curList=LATEST;userLists=JSON.parse(localStorage.getItem('spelllists')||'{}');if(localStorage.getItem('spellseen')!==LATEST){curList=LATEST;localStorage.setItem('spellseen',LATEST);localStorage.setItem('spelllist',LATEST)}}catch(e){}
-function loadWords(){words=(userLists[curList]||LISTS[curList]).slice()}
+function loadWords(){words=LISTS[curList].slice()}
 loadWords();
 
 function show(id){['home','play','done'].forEach(s=>$(s).hidden=s!==id)}
 function renderHome(){
   $('list').innerHTML='';
   words.forEach(w=>{const li=document.createElement('li');li.textContent=w;$('list').appendChild(li)});
-  $('edit').value=words.join('\n');
   const mk=(box,items,cur,fn)=>{box.innerHTML='';items.forEach(([k,t])=>{const b=document.createElement('button');b.className='chip'+(k===cur?' on':'');b.textContent=t;b.setAttribute('aria-pressed',k===cur);b.onclick=()=>fn(k);box.appendChild(b)})};
   mk($('lists'),Object.keys(LISTS).map(k=>[k,k]),curList,k=>{curList=k;try{localStorage.setItem('spelllist',k)}catch(e){}loadWords();renderHome()});
   const ks=Object.keys(coll.caught);
@@ -318,13 +305,6 @@ function saySent(w){if(playClips(w,['s','w2']))return;speakSeq([[SENT[w]||'',1],
 function say(w){if(playClips(w,['w','s','w2']))return;speakSeq([['Your word is '+w+'.',1],[SENT[w]||'',1],[w+'.',0.85]])}
 function blankSent(w){const t=SENT[w];return t?t.replace(new RegExp('\\b'+w+'\\b','gi'),'_____'):''}
 function showSent(){const e=$('sent');if(e)e.textContent=blankSent(queue[i])}
-function fillVoices(){
-  try{
-    const vs=speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.indexOf('en')===0).sort((a,b)=>rank(b)-rank(a));
-    const sel=$('voice');sel.innerHTML='';const cur=pickVoice();
-    vs.forEach(v=>{const o=document.createElement('option');o.value=v.voiceURI;o.textContent=v.name+' ('+v.lang+')';if(cur&&cur.voiceURI===v.voiceURI)o.selected=true;sel.appendChild(o)});
-  }catch(e){}
-}
 function shuffle(a){a=a.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a}
 function dots(){
   const left=3-wrong;let h='';
@@ -405,18 +385,6 @@ $('next').onclick=advance;
 $('ans').addEventListener('focus',()=>setTimeout(()=>{try{$('check').scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}},350));
 $('ans').addEventListener('input',e=>{if(e.inputType&&e.inputType.indexOf('insert')===0&&e.data){const ch=e.data.slice(-1).toLowerCase();if(/^[a-z]$/.test(ch))playLetter(ch)}});
 $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();check()}});
-$('save').onclick=()=>{
-  const a=$('edit').value.split('\n').map(s=>s.trim().toLowerCase()).filter(Boolean);
-  if(!a.length){delete userLists[curList];loadWords()}else{words=a;userLists[curList]=a}
-  try{localStorage.setItem('spelllists',JSON.stringify(userLists))}catch(e){}
-  renderHome();
-};
-try{speechSynthesis.onvoiceschanged=fillVoices}catch(e){}
-fillVoices();
-$('rate').value=String(prefs.rate);
-$('voice').onchange=()=>{prefs.voice=$('voice').value;savePrefs();say('picnic')};
-$('rate').onchange=()=>{prefs.rate=parseFloat($('rate').value);savePrefs();say('picnic')};
-$('test').onclick=()=>say('picnic');
 renderHome();
 
 let AC=null,MG=null,SG=null,VG=null,mTimer=null,nextBar=0,barN=0,noiseBuf=null,crackle=null;
