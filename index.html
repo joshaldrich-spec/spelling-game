@@ -122,6 +122,10 @@ label{font-weight:600}
       <p class="hint" style="margin:12px 0 4px">Rewards, one per line as <b>name | bells</b>:</p>
       <textarea id="rwedit" rows="6" aria-label="Rewards" autocapitalize="sentences" spellcheck="false"></textarea>
       <button class="btn w nine" id="rwsave">Save rewards</button>
+      <p class="hint" style="margin:12px 0 4px">Rewards can be cashed in:</p>
+      <select id="ulsel" aria-label="Cash-in day" style="font-size:18px;padding:8px;border-radius:10px;max-width:100%"></select>
+      <button class="chip" id="ulnow" style="margin-top:8px;min-height:40px;font-size:16px">Unlock today only</button>
+      <p class="hint" id="ulmsg" style="margin:6px 0 0"></p>
       <p class="hint" style="margin:12px 0 4px">Adjust bells:</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="chip" id="bm10">-10</button><button class="chip" id="bp10">+10</button><button class="chip" id="bp50">+50</button></div>
       <p class="hint" style="margin:12px 0 4px">Cashed in (tap Refund if it was a mistake):</p>
@@ -435,7 +439,14 @@ let rewards=DEFRW.map(r=>({n:r.n,c:r.c}));
 try{const r=JSON.parse(localStorage.getItem('spellrewards')||'null');if(Array.isArray(r)&&r.length)rewards=r}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 function saveColl(){try{localStorage.setItem('spellcoll2',JSON.stringify(coll))}catch(e){}}
-function goalText(){if(rewards.some(r=>r.c<=coll.bells))return 'You can cash in a reward!';
+let ul={day:5,today:''};
+try{Object.assign(ul,JSON.parse(localStorage.getItem('spellunlock')||'{}'))}catch(e){}
+const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function ymd(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function canCash(){return ul.day<0||new Date().getDay()===ul.day||ul.today===ymd()}
+function lockMsg(){return 'Cash in on '+DN[ul.day]+' after the spelling test!'}
+function saveUl(){try{localStorage.setItem('spellunlock',JSON.stringify(ul))}catch(e){}}
+function goalText(){if(rewards.some(r=>r.c<=coll.bells))return canCash()?'You can cash in a reward!':'You have enough bells! '+lockMsg();
  const n=rewards.slice().sort((a,b)=>a.c-b.c)[0];return n?(n.c-coll.bells)+' more bells for: '+n.n:''}
 function updGoal(){const t=goalText();['goal','goaltxt'].forEach(id=>{const e=$(id);if(e)e.textContent=t})}
 function renderShop(){const box=$('shop');box.innerHTML='';
@@ -443,18 +454,24 @@ function renderShop(){const box=$('shop');box.innerHTML='';
   d.innerHTML='<div class="rwt"><b></b><span class="rwc"><img src="'+A.bell+'" alt="" width="20" height="20"><span></span></span></div><div class="sp"><i style="width:'+pct+'%"></i></div>';
   d.querySelector('b').textContent=r.n;d.querySelector('.rwc span').textContent=r.c;
   const row=document.createElement('div');row.className='rwf';
-  if(ok){const b=document.createElement('button');b.className='chip on';b.textContent='Cash in with a grown-up';b.onclick=()=>gate(()=>cashIn(idx));row.appendChild(b)}
+  if(ok&&!canCash())row.textContent=lockMsg();
+  else if(ok){const b=document.createElement('button');b.className='chip on';b.textContent='Cash in with a grown-up';b.onclick=()=>gate(()=>cashIn(idx));row.appendChild(b)}
   else row.textContent=(r.c-coll.bells)+' more bells to go';
   d.appendChild(row);box.appendChild(d)});
  if(!rewards.length)box.textContent='No rewards yet. Ask a grown-up to add some!';
  updGoal()}
-function cashIn(idx){const r=rewards[idx];if(!r||coll.bells<r.c)return;coll.bells-=r.c;coll.hist.unshift({n:r.n,c:r.c,t:Date.now()});coll.hist=coll.hist.slice(0,30);saveColl();sfx('rare');burst(70);
+function cashIn(idx){const r=rewards[idx];if(!r||coll.bells<r.c||!canCash())return;coll.bells-=r.c;coll.hist.unshift({n:r.n,c:r.c,t:Date.now()});coll.hist=coll.hist.slice(0,30);saveColl();sfx('rare');burst(70);
  renderHome();$('rwmsg').textContent='You cashed in: '+r.n+'! Great saving!'}
 function renderHist(){const h=$('hist');h.innerHTML='';
  if(!coll.hist.length){h.textContent='Nothing yet.';return}
  coll.hist.forEach((x,k)=>{const d=document.createElement('div');d.className='hrow';const t=document.createElement('span');t.textContent=x.n+' ('+x.c+') '+new Date(x.t).toLocaleDateString();
   const b=document.createElement('button');b.className='chip';b.textContent='Refund';b.onclick=()=>{coll.bells+=x.c;coll.hist.splice(k,1);saveColl();renderHome();renderHist()};d.appendChild(t);d.appendChild(b);h.appendChild(d)})}
-function fillG(){$('rwedit').value=rewards.map(r=>r.n+' | '+r.c).join('\n');renderHist()}
+function ulStatus(){$('ulmsg').textContent=canCash()?(ul.day<0?'Open every day.':(new Date().getDay()===ul.day?'Open today ('+DN[ul.day]+').':'Unlocked for today only.')):'Locked until '+DN[ul.day]+'.'}
+function fillG(){$('rwedit').value=rewards.map(r=>r.n+' | '+r.c).join('\n');renderHist();
+ const o=$('ulsel');o.innerHTML='<option value="-1">Any day</option>'+DN.map((n,i)=>'<option value="'+i+'">Only on '+n+' (test day)</option>').join('');o.value=String(ul.day);ulStatus()}
+$('ulsel').onchange=()=>{ul.day=parseInt($('ulsel').value,10);saveUl();ulStatus();renderShop()};
+$('ulnow').onclick=()=>{ul.today=ymd();saveUl();ulStatus();renderShop()};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderShop()});
 let gateCb=null,gAns=0;
 function newQ(pre){const a=6+Math.floor(Math.random()*4),b=6+Math.floor(Math.random()*4);gAns=a*b;$('gq').textContent=(pre||'')+'What is '+a+' × '+b+'?'}
 function gate(cb){gateCb=cb;newQ();$('ga').value='';$('gate').hidden=false;setTimeout(()=>{try{$('ga').focus()}catch(e){}},50)}
