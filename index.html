@@ -98,6 +98,23 @@ label{font-weight:600}
 .mt.off{opacity:.45;text-decoration:line-through}
 .big{font-size:56px;font-weight:700;text-align:center;margin:0}
 #caughtlist img{display:inline-block;margin:2px}
+.md{display:block;font-size:11px;letter-spacing:2px;color:#2FA6A0;line-height:1;margin-top:1px}
+.tiles{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0 6px;min-height:72px}
+.tile{background:#fff;border:3px solid #C9D3F2;border-radius:16px;padding:4px 14px;font-size:40px;font-weight:700;letter-spacing:2px;animation:tin .5s both}
+.tile.suf{background:#FFE9A8;border-color:#C98A12}
+.tile.dbl{background:#FFC9D3;border-color:#D6455D;color:#D6455D}
+.tile.blank{background:#F3F5FC;color:#9AA0B8;animation:none}
+.tile .l{display:inline-block;transition:transform .15s}
+.tile .l.hl{color:#D6455D;transform:scale(1.3)}
+.tile .l.x{text-decoration:line-through;color:#9AA0B8;font-size:.6em;margin-left:3px}
+@keyframes tin{from{transform:translateY(-16px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.tile{animation:none}}
+.cl{font-size:14px;color:var(--muted);text-align:center;margin-top:6px}
+.cr{display:flex;gap:2px;justify-content:center;font-size:32px;font-weight:700;letter-spacing:2px}
+.cr span{padding:0 3px;border-radius:6px}
+.cr span.dif{background:#FFC9D3;color:#D6455D}
+#prule{margin:12px 0;font-size:17px;text-align:left}
+.pst{font-weight:700;color:var(--muted);text-align:center;font-size:17px}
 </style></head>
 <body><main>
 
@@ -106,7 +123,9 @@ label{font-weight:600}
   <div class="mrow"><img id="mh" class="mas" alt=""><div class="bub nine"><b>Ready to spell?</b> Listen, then type the word. You get 3 tries before a tip pops up!</div></div>
   <div class="card nine">
     <div class="seg" id="lists"></div><ul class="words" id="list"></ul>
-    <button class="btn nine" id="start">Start</button>
+    <button class="btn nine" id="pstart">Practice the words</button>
+    <p class="hint center" style="margin:6px 0 0">No points, no pressure. See how each word is built.</p>
+    <button class="btn w nine" id="start">Start the spelling run (earn bells)</button>
   </div>
   <div class="card nine center">
     <div class="bellrow"><img id="bellimg2" alt=""><span id="bells"></span></div>
@@ -170,8 +189,36 @@ label{font-weight:600}
     <div id="caughtlist" style="margin:6px 0"></div>
     <img id="conf" alt="" style="width:110px;margin:4px auto">
     <p id="summary" style="margin:0 0 4px"></p>
-    <button class="btn nine" id="redo" hidden>Practice missed words</button>
+    <button class="btn nine" id="predo" hidden>Practice the missed words</button>
+    <button class="btn w nine" id="redo" hidden>Try the missed words again for bells</button>
     <button class="btn w nine" id="again">Back to start</button>
+  </div>
+</section>
+
+<section id="prac" hidden>
+  <div class="top"><span id="pcount"></span><button class="chip" id="pquit" style="min-height:36px;font-size:15px;padding:2px 12px">Done for now</button></div>
+  <div class="sp" style="margin:0 4px 8px"><i id="pfill" style="width:0;transition:width .3s"></i></div>
+  <img id="pmas" class="mas" alt="">
+  <div class="card nine center" id="pmain">
+    <div class="pst" id="pstage"></div>
+    <div class="tiles" id="ptiles"></div>
+    <div class="bub nine" id="prule" hidden></div>
+    <button class="speak" id="phear" aria-label="Hear the word"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+    <p class="hint center" id="psent" style="margin:8px 8px 0;font-size:18px;min-height:24px"></p>
+    <button class="chip" id="phears" style="display:block;margin:8px auto 0;min-height:40px;font-size:16px">Hear it in a sentence</button>
+    <button class="chip" id="pspell" style="display:block;margin:8px auto 0;min-height:40px;font-size:16px">Spell it with me</button>
+    <div class="inp nine" id="pinpbox"><input type="text" id="pans" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Type the word"></div>
+    <div id="pcmp" hidden><div class="cl">You typed</div><div class="cr" id="pc1"></div><div class="cl">The word</div><div class="cr" id="pc2"></div></div>
+    <div class="msg" id="pmsg" role="status" aria-live="polite"></div>
+    <button class="btn nine" id="pgo">Check</button>
+    <button class="chip" id="pshow" style="display:block;margin:10px auto 0;min-height:40px;font-size:16px">Show me the word again</button>
+  </div>
+  <div class="card nine center" id="pend" hidden>
+    <h1>Nice practicing!</h1>
+    <p id="psum" style="margin:10px 0 4px"></p>
+    <div id="pdots" style="margin:6px 0"></div>
+    <button class="btn nine" id="pmore">Practice more words</button>
+    <button class="btn w nine" id="pback">Back to start</button>
   </div>
 </section>
 
@@ -262,11 +309,21 @@ const LATEST='Week 4';let curList=LATEST,userLists={};
 try{curList=localStorage.getItem('spelllist')||LATEST;if(!LISTS[curList])curList=LATEST;userLists=JSON.parse(localStorage.getItem('spelllists')||'{}');if(localStorage.getItem('spellseen')!==LATEST){curList=LATEST;localStorage.setItem('spellseen',LATEST);localStorage.setItem('spelllist',LATEST)}}catch(e){}
 function loadWords(){words=LISTS[curList].slice()}
 loadWords();
+const PARTS={bandit:'ban|dit',shelf:'sh|elf',sprang:'spr|ang',munch:'m|unch',picnic:'pic|nic',think:'th|ink',wish:'w|ish',drift:'dr|ift',box:'b|ox',she:'sh|e',
+snacking:'snack|+ing',mixing:'mix|+ing',smelling:'smell|+ing',running:'run|n*|+ing',kissing:'kiss|+ing',buzzing:'buzz|+ing',hitting:'hit|t*|+ing',until:'un|til',problem:'prob|lem',how:'h|ow',
+sand:'s|and',sang:'s|ang',sank:'s|ank',hunt:'h|unt',hung:'h|ung',hunk:'h|unk',thin:'th|in',thing:'th|ing',should:'sh|ould',
+yelled:'yell|+ed',yanked:'yank|+ed',slumped:'slump|+ed',limped:'limp|+ed',plopped:'plop|p*|+ed',smiled:'smil^e|+ed',shrugged:'shrug|g*|+ed',liked:'lik^e|+ed',patted:'pat|t*|+ed',you:'you'};
+let PM={};try{PM=JSON.parse(localStorage.getItem('spellmastery')||'{}')}catch(e){}
+function savePM(){try{localStorage.setItem('spellmastery',JSON.stringify(PM))}catch(e){}}
+function ymd(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function mUp(w){const m=PM[w]=PM[w]||{d:0};if(m.last!==ymd()){m.d=(m.d||0)+1;m.last=ymd()}savePM()}
+function mMiss(w){const m=PM[w]=PM[w]||{d:0};m.miss=(m.miss||0)+1;m.missDay=ymd();savePM()}
+function mdots(w){const d=Math.min(3,(PM[w]&&PM[w].d)||0);return '\u25CF'.repeat(d)+'\u25CB'.repeat(3-d)}
 
-function show(id){['home','play','done'].forEach(s=>$(s).hidden=s!==id)}
+function show(id){['home','play','done','prac'].forEach(s=>$(s).hidden=s!==id)}
 function renderHome(){
   $('list').innerHTML='';
-  words.forEach(w=>{const li=document.createElement('li');li.textContent=w;$('list').appendChild(li)});
+  words.forEach(w=>{const li=document.createElement('li');li.textContent=w;const sp=document.createElement('span');sp.className='md';sp.textContent=mdots(w);li.appendChild(sp);$('list').appendChild(li)});
   const mk=(box,items,cur,fn)=>{box.innerHTML='';items.forEach(([k,t])=>{const b=document.createElement('button');b.className='chip'+(k===cur?' on':'');b.textContent=t;b.setAttribute('aria-pressed',k===cur);b.onclick=()=>fn(k);box.appendChild(b)})};
   mk($('lists'),Object.keys(LISTS).map(k=>[k,k]),curList,k=>{curList=k;try{localStorage.setItem('spelllist',k)}catch(e){}loadWords();renderHome()});
   const ks=Object.keys(coll.caught);
@@ -292,7 +349,7 @@ async function loadClips(){const c=ac();if(!c)return;
   const bin=atob(AUD[w][k]),u=new Uint8Array(bin.length);for(let q=0;q<bin.length;q++)u[q]=bin.charCodeAt(q);
   (CLIPS[w]=CLIPS[w]||{})[k]=await c.decodeAudioData(u.buffer)}catch(e){}}}
  for(const ch of Object.keys(LETS)){try{const bin=atob(LETS[ch]),u=new Uint8Array(bin.length);for(let q=0;q<bin.length;q++)u[q]=bin.charCodeAt(q);LCLIPS[ch]=await c.decodeAudioData(u.buffer)}catch(e){}}}
-function playLetter(ch){if(!prefs.letters||!LCLIPS[ch]||!ac())return;if(AC.currentTime<voiceEndT)return;try{if(letSrc)letSrc.stop()}catch(e){}const s=AC.createBufferSource(),g=AC.createGain();g.gain.value=0.85;s.buffer=LCLIPS[ch];s.connect(g);g.connect(VG);s.start();letSrc=s}
+function playLetter(ch,f){if((!prefs.letters&&!f)||!LCLIPS[ch]||!ac())return;if(!f&&AC.currentTime<voiceEndT)return;try{if(letSrc)letSrc.stop()}catch(e){}const s=AC.createBufferSource(),g=AC.createGain();g.gain.value=0.85;s.buffer=LCLIPS[ch];s.connect(g);g.connect(VG);s.start();letSrc=s}
 function stopClips(){clipTok++;clipSrcs.forEach(s=>{try{s.stop()}catch(e){}});clipSrcs=[]}
 function playClips(w,keys){
  const c=CLIPS[w];if(!c||!ac())return false;
@@ -367,7 +424,7 @@ function check(){
     $('ans').select();say(w);
   }else{
     locked=true;
-    if(!missed.includes(w))missed.push(w);
+    if(!missed.includes(w)){missed.push(w);mMiss(w)}
     if(!requeued[w]){requeued[w]=1;queue.push(w)}
     $('msg').textContent='The word is '+w.split('').join(' ')+'. We\u2019ll try it again later.';$('msg').className='msg bad';
     $('ans').disabled=true;$('check').hidden=true;nextBtn();dots();mood('m1');sfx('bad');
@@ -383,7 +440,7 @@ function showTip(w){
 }
 function finish(){
   setBar(100);
-  show('done');sfx('done');burst(60);$('redo').hidden=!missed.length;
+  show('done');sfx('done');burst(60);$('redo').hidden=!missed.length;$('predo').hidden=!missed.length;
   $('score').textContent=right+' / '+total;
   $('caughtlist').innerHTML=round.map(k=>pic(k,64)).join(' ');
   const m=missed.filter(w=>true);
@@ -392,6 +449,7 @@ function finish(){
 $('start').onclick=()=>begin();
 $('redo').onclick=()=>{const m=missed.slice();if(m.length)begin(m)};
 $('again').onclick=()=>{renderHome();show('home')};
+$('predo').onclick=()=>{const m=missed.slice();if(m.length)prStart(m)};
 $('hear').onclick=()=>{if(queue[i])sayWord(queue[i]);try{$('ans').focus()}catch(e){}};
 $('hears').onclick=()=>{if(queue[i])saySent(queue[i]);try{$('ans').focus()}catch(e){}};
 $('check').onclick=check;
@@ -400,6 +458,115 @@ $('ans').addEventListener('focus',()=>setTimeout(()=>{try{$('check').scrollIntoV
 $('ans').addEventListener('input',e=>{if(e.inputType&&e.inputType.indexOf('insert')===0&&e.data){const ch=e.data.slice(-1).toLowerCase();if(/^[a-z]$/.test(ch))playLetter(ch)}});
 $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();check()}});
 renderHome();
+
+// ===== Practice mode =====
+function parseParts(w){return (PARTS[w]||w).split('|').map(p=>{const o={t:'',dbl:false,suf:false,x:''};if(p[0]==='+'){o.suf=true;p=p.slice(1)}if(p.slice(-1)==='*'){o.dbl=true;p=p.slice(0,-1)}const c=p.indexOf('^');if(c>=0){o.x=p.slice(c+1);p=p.slice(0,c)}o.t=p;return o})}
+function ruleText(w){const ps=parseParts(w),d=ps.find(p=>p.dbl),x=ps.find(p=>p.x),suf=(ps.find(p=>p.suf)||{}).t;
+ if(d)return ps[0].t+' has 1 vowel and 1 consonant at the end, so double the '+d.t+' before adding '+suf+'.';
+ if(x)return x.t+x.x+' ends with a silent '+x.x+'. Drop the '+x.x+' before adding '+suf+'.';
+ return TIPS[w]||''}
+function renderTiles(ps,mode){const box=$('ptiles');box.innerHTML='';
+ ps.forEach((p,k)=>{const d=document.createElement('div');d.className='tile'+(p.suf?' suf':'')+(p.dbl?' dbl':'')+(mode==='blank'?' blank':'');d.style.animationDelay=(k*0.35)+'s';
+  for(const ch of p.t){const s=document.createElement('span');s.className='l';s.textContent=mode==='blank'?'_':ch;d.appendChild(s)}
+  if(p.x&&mode!=='blank'){const s=document.createElement('span');s.className='l x';s.textContent=p.x;d.appendChild(s)}
+  box.appendChild(d)})}
+function lcsMark(a,b){const n=a.length,m=b.length,L=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+ for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
+ const ma=new Array(n).fill(false),mb=new Array(m).fill(false);let i=0,j=0;
+ while(i<n&&j<m){if(a[i]===b[j]){ma[i]=mb[j]=true;i++;j++}else if(L[i+1][j]>=L[i][j+1])i++;else j++}
+ return [ma,mb]}
+function showCmp(a,b){const [ma,mb]=lcsMark(a,b);
+ const fill=(el,str,mk)=>{el.innerHTML='';str.split('').forEach((ch,k)=>{const s=document.createElement('span');s.textContent=ch;if(!mk[k])s.className='dif';el.appendChild(s)})};
+ fill($('pc1'),a,ma);fill($('pc2'),b,mb);$('pcmp').hidden=false}
+function prPick(n){const cur=LISTS[curList].slice(),d=w=>(PM[w]&&PM[w].d)||0;
+ const sc=w=>d(w)+Math.random()*0.5-((PM[w]&&PM[w].missDay===ymd())?0.4:0);
+ cur.sort((a,b)=>sc(a)-sc(b));
+ let rev=null;Object.keys(LISTS).filter(k=>k!==curList).forEach(k=>LISTS[k].forEach(w=>{if(!cur.includes(w)&&PM[w]&&d(w)<2&&(!rev||d(w)<d(rev)))rev=w}));
+ const pick=cur.slice(0,rev?n-1:n);if(rev)pick.push(rev);return pick}
+let P={tasks:[],ix:0,words:[],solomiss:{},covermiss:{},weak:[],mode:'',timer:0,sp:0,cur:null};
+function prStop(){clearTimeout(P.timer);clearInterval(P.sp);stopClips();try{speechSynthesis.cancel()}catch(e){}}
+function prStart(list){prStop();const ws=(list&&list.length?list:prPick(5)).slice();
+ P={tasks:[],ix:0,words:ws,solomiss:{},covermiss:{},weak:[],mode:'',timer:0,sp:0,cur:null};
+ ws.forEach(w=>['look','copy','cover'].forEach(st=>P.tasks.push({w,st})));
+ shuffle(ws).forEach(w=>P.tasks.push({w,st:'solo'}));
+ show('prac');$('pend').hidden=true;$('pmain').hidden=false;window.scrollTo(0,0);prTask()}
+function prMood(k){$('pmas').src=A[k]}
+function prGo(label,mode){$('pgo').textContent=label;$('pgo').hidden=false;P.mode=mode}
+function prTask(){prStop();
+ if(P.ix>=P.tasks.length)return prEnd();
+ const t=P.tasks[P.ix];P.cur=t;const w=t.w,ps=parseParts(w);
+ $('pcount').textContent='Word '+(P.words.indexOf(w)+1)+' of '+P.words.length;
+ $('pfill').style.width=Math.round(P.ix/P.tasks.length*100)+'%';
+ $('pmsg').textContent='';$('pmsg').className='msg';$('pcmp').hidden=true;$('prule').hidden=true;
+ $('pans').value='';$('pans').disabled=false;$('pinpbox').hidden=true;$('pinpbox').className='inp nine';
+ $('pshow').hidden=true;$('pspell').hidden=true;$('psent').textContent='';prMood('m0');
+ const rule=ruleText(w);
+ if(t.st==='look'){
+  $('pstage').textContent='Look and listen';renderTiles(ps,'full');
+  if(rule){$('prule').textContent=rule;$('prule').hidden=false}
+  $('pspell').hidden=false;prGo('I\u2019m ready to type it','look');
+  setTimeout(()=>sayWord(w),250);
+ }else if(t.st==='copy'){
+  $('pstage').textContent=t.fix?'Let\u2019s try it together. The word is right here.':'Your turn! Type the word. The pieces are right here.';renderTiles(ps,'full');
+  if(rule){$('prule').textContent=rule;$('prule').hidden=false}
+  $('pinpbox').hidden=false;prGo('Check','check');setTimeout(()=>{sayWord(w);try{$('pans').focus()}catch(e){}},250);
+ }else if(t.st==='cover'){
+  $('pstage').textContent='Look closely. I\u2019m about to cover it!';renderTiles(ps,'full');
+  prGo('Cover it now','cover');
+  P.timer=setTimeout(()=>prCover(),2200+w.length*220);
+ }else{
+  $('pstage').textContent='Now spell it all by yourself!';$('ptiles').innerHTML='';
+  $('psent').textContent=blankSent(w);$('pinpbox').hidden=false;$('pshow').hidden=false;prGo('Check','check');
+  setTimeout(()=>{say(w);try{$('pans').focus()}catch(e){}},250);
+ }}
+function prCover(){clearTimeout(P.timer);if(!P.cur||P.cur.st!=='cover'||P.mode!=='cover')return;
+ const w=P.cur.w;$('pstage').textContent='Now type it from your memory!';renderTiles(parseParts(w),'blank');
+ $('psent').textContent=blankSent(w);$('pinpbox').hidden=false;$('pshow').hidden=false;prGo('Check','check');
+ try{$('pans').focus()}catch(e){}}
+const PRAISE=['Yes! You built it!','Great spelling!','You got it!','Nice work!','That\u2019s it!'];
+function prCheck(){if(P.mode!=='check')return;
+ const t=P.cur,w=t.w,v=$('pans').value.trim().toLowerCase();if(!v)return;
+ if(v===w){
+  sfx('good');burst(14);prMood('m2');renderTiles(parseParts(w),'full');$('pcmp').hidden=true;
+  $('pmsg').textContent=PRAISE[Math.floor(Math.random()*PRAISE.length)];$('pmsg').className='msg good';
+  $('pans').disabled=true;$('pshow').hidden=true;
+  if(t.st==='solo'&&!t.retry&&!P.solomiss[w])mUp(w);
+  prGo('Next','next');return}
+ // gentle miss: show the difference, never a penalty
+ sfx('tap');prMood('m1');showCmp(v,w);
+ $('pinpbox').className='inp nine';void $('pinpbox').offsetWidth;$('pinpbox').className='inp nine bad';
+ if(t.st==='copy'){
+  $('pmsg').textContent='Almost! Check the pink letters, then try again.';$('pmsg').className='msg bad';
+  try{$('pans').select()}catch(e){}return}
+ $('pans').disabled=true;$('pshow').hidden=true;
+ $('pmsg').textContent='Almost! The pink letters are different. Let\u2019s build it together.';$('pmsg').className='msg bad';
+ renderTiles(parseParts(w),'full');
+ const r=ruleText(w);if(r){$('prule').textContent=r;$('prule').hidden=false}
+ P.tasks.splice(P.ix+1,0,{w,st:'copy',fix:true});
+ if(t.st==='cover'){P.covermiss[w]=(P.covermiss[w]||0)+1;
+  if(P.covermiss[w]<2){const f=P.tasks.findIndex((x,k)=>k>P.ix&&x.st==='solo');P.tasks.splice(f<0?P.tasks.length:f,0,{w,st:'cover'})}}
+ else{P.solomiss[w]=(P.solomiss[w]||0)+1;mMiss(w);if(!P.weak.includes(w))P.weak.push(w);
+  if(P.solomiss[w]<2)P.tasks.push({w,st:'solo',retry:true})}
+ prGo('Next','next')}
+function prAdvance(){P.ix++;prTask()}
+function prEnd(){prStop();$('pfill').style.width='100%';$('pmain').hidden=true;$('pend').hidden=false;prMood('m2');sfx('done');burst(40);
+ const wk=P.weak.filter(w=>PM[w]&&PM[w].missDay===ymd());
+ $('psum').textContent=wk.length?'You worked hard today! We\u2019ll practice '+wk.join(', ')+' again. Every try makes your brain stronger.':'You practiced every word. Amazing!';
+ $('pdots').innerHTML='';P.words.forEach(w=>{const d=document.createElement('div');d.textContent=w+'  '+mdots(w);d.style.fontWeight='600';$('pdots').appendChild(d)});
+ window.scrollTo(0,0)}
+$('pstart').onclick=()=>prStart();
+$('pmore').onclick=()=>prStart();
+$('pback').onclick=()=>{prStop();renderHome();show('home')};
+$('pquit').onclick=()=>{prStop();renderHome();show('home')};
+$('pgo').onclick=()=>{if(P.mode==='check')prCheck();else if(P.mode==='next'||P.mode==='look')prAdvance();else if(P.mode==='cover')prCover()};
+$('pshow').onclick=()=>{if(!P.cur)return;const w=P.cur.w;P.tasks.splice(P.ix,0,{w,st:'look'});prTask()};
+$('phear').onclick=()=>{if(P.cur)sayWord(P.cur.w)};
+$('phears').onclick=()=>{if(P.cur)saySent(P.cur.w)};
+$('pspell').onclick=()=>{if(!P.cur)return;stopClips();voiceEndT=0;const ls=[...$('ptiles').querySelectorAll('.l:not(.x)')];let k=0;clearInterval(P.sp);const w=P.cur.w;
+ P.sp=setInterval(()=>{ls.forEach(l=>l.classList.remove('hl'));if(k>=ls.length){clearInterval(P.sp);setTimeout(()=>sayWord(w),250);return}ls[k].classList.add('hl');playLetter(ls[k].textContent,true);k++},520)};
+$('pans').addEventListener('input',e=>{if(e.inputType&&e.inputType.indexOf('insert')===0&&e.data){const ch=e.data.slice(-1).toLowerCase();if(/^[a-z]$/.test(ch))playLetter(ch)}});
+$('pans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();prCheck()}});
+$('pans').addEventListener('focus',()=>setTimeout(()=>{try{$('pgo').scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}},350));
 
 let AC=null,MG=null,SG=null,VG=null,mTimer=null,nextBar=0,barN=0,noiseBuf=null,crackle=null;
 function ac(){try{try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();AC.onstatechange=()=>{try{if(AC.state==='running'&&prefs.music&&!mTimer)startMusic()}catch(e){}};
@@ -452,7 +619,6 @@ function saveColl(){try{localStorage.setItem('spellcoll2',JSON.stringify(coll))}
 let ul={day:5,today:''};
 try{Object.assign(ul,JSON.parse(localStorage.getItem('spellunlock')||'{}'))}catch(e){}
 const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-function ymd(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
 function canCash(){return ul.day<0||new Date().getDay()===ul.day||ul.today===ymd()}
 function lockMsg(){return 'Cash in on '+DN[ul.day]+' after the spelling test!'}
 function saveUl(){try{localStorage.setItem('spellunlock',JSON.stringify(ul))}catch(e){}}
